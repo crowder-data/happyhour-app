@@ -3,6 +3,8 @@ import pandas as pd
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
+TIMEZONE = ZoneInfo("America/Chicago")
+
 st.set_page_config(
     page_title="Happy Hour Finder",
     layout="wide"
@@ -24,13 +26,8 @@ business, specials, days = load_data()
 
 
 def get_day_groups(day, day_table):
-    if day in [
-        "Monday",
-        "Tuesday",
-        "Wednesday",
-        "Thursday",
-        "Friday"
-    ]:
+
+    if day in ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]:
         groups = [day, "Weekday", "Daily"]
     else:
         groups = [day, "Weekend", "Daily"]
@@ -41,50 +38,40 @@ def get_day_groups(day, day_table):
     ].tolist()
 
 
-def is_current_time(start_time, end_time):
-    now = datetime.now(
-        ZoneInfo("America/Chicago")
-    )
+def is_current_time(start_time, stop_time):
+
+    now = datetime.now(TIMEZONE).time()
 
     start = datetime.strptime(
         start_time,
         "%I:%M:%S %p"
-    ).replace(
-        year=now.year,
-        month=now.month,
-        day=now.day
-    )
-
-    end = datetime.strptime(
-        end_time,
-        "%I:%M:%S %p"
-    ).replace(
-        year=now.year,
-        month=now.month,
-        day=now.day
-    )
-
-    if end < start:
-        end += timedelta(days=1)
-
-    if now < start:
-        return False
-
-    return start <= now <= end
-
-
-def time_remaining(stop_time):
-    now = datetime.now(
-        ZoneInfo("America/Chicago")
-    )
+    ).time()
 
     stop = datetime.strptime(
         stop_time,
         "%I:%M:%S %p"
-    ).replace(
-        year=now.year,
-        month=now.month,
-        day=now.day
+    ).time()
+
+    if start <= stop:
+        return start <= now <= stop
+
+    return now >= start or now <= stop
+
+
+def time_remaining(stop_time):
+
+    now = datetime.now(TIMEZONE)
+
+    stop = datetime.strptime(
+        stop_time,
+        "%I:%M:%S %p"
+    )
+
+    stop = now.replace(
+        hour=stop.hour,
+        minute=stop.minute,
+        second=stop.second,
+        microsecond=0
     )
 
     if stop < now:
@@ -93,18 +80,13 @@ def time_remaining(stop_time):
     return stop - now
 
 
-today = datetime.now(
-    ZoneInfo("America/Chicago")
-).strftime("%A")
-
+today = datetime.now(TIMEZONE).strftime("%A")
 
 day_ids = get_day_groups(today, days)
-
 
 todays_specials = specials[
     specials["dayID"].isin(day_ids)
 ]
-
 
 todays_specials = todays_specials[
     todays_specials.apply(
@@ -115,7 +97,6 @@ todays_specials = todays_specials[
         axis=1
     )
 ]
-
 
 results = (
     todays_specials
@@ -134,23 +115,17 @@ results = (
     )
 )
 
+st.subheader(f"Happy Hours Available Now ({today})")
 
 if results.empty:
+
     st.info("No happy hours are active right now.")
 
 else:
 
-    results["TimeRemaining"] = results["Stop"].apply(
-        time_remaining
-    )
+    results["TimeRemaining"] = results["Stop"].apply(time_remaining)
 
-    results = results.sort_values(
-        "TimeRemaining"
-    )
-
-    st.subheader(
-        f"Happy Hours Available Now ({today})"
-    )
+    results = results.sort_values("TimeRemaining")
 
     for _, row in results.iterrows():
 
@@ -161,41 +136,27 @@ else:
         hours = total_minutes // 60
         minutes = total_minutes % 60
 
-        if hours:
+        if hours > 0:
             remaining = f"{hours}h {minutes}m"
         else:
             remaining = f"{minutes}m"
 
-        with st.expander(
-            f"**{row['Name']}** ({remaining} remaining)"
-        ):
+        header = (
+            f"{row['Name']} "
+            f"({remaining} remaining)"
+        )
 
-            st.markdown(
-                f"### {row['Description']}"
-            )
+        with st.expander(header):
+
+            st.write(f"**Special:** {row['Description']}")
 
             col1, col2 = st.columns(2)
 
             with col1:
-                st.write(
-                    f"**Type:** {row['Type']}"
-                )
-                st.write(
-                    f"**Address:** {row['Street']}"
-                )
-                st.write(
-                    f"**City:** {row['City']}"
-                )
+                st.write(f"**Type:** {row['Type']}")
+                st.write(f"**Address:** {row['Street']}")
+                st.write(f"**City:** {row['City']}")
 
             with col2:
-                st.write(
-                    f"**Day:** {row['Day']}"
-                )
-                st.write(
-                    f"**Hours:** {row['Start']} – {row['Stop']}"
-                )
-
-            # Future additions:
-            # st.link_button("Website", row["Website"])
-            # st.link_button("Directions", google_maps_url)
-            # st.write(f"Phone: {row['Phone']}")
+                st.write(f"**Hours:** {row['Start']} - {row['Stop']}")
+                st.write(f"**Day:** {row['Day']}")
