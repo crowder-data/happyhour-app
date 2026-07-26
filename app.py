@@ -8,7 +8,7 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("Happy Hour Finder")
+st.title("🍺 Happy Hour Finder")
 
 
 @st.cache_data
@@ -24,34 +24,10 @@ business, specials, days = load_data()
 
 
 def get_day_groups(day, day_table):
-    if day in [
-        "Monday",
-        "Tuesday",
-        "Wednesday",
-        "Thursday",
-        "Friday"
-    ]:
-        groups = [
-            day,
-            "Weekday",
-            "Daily"
-        ]
-
-    elif day in [
-        "Saturday",
-        "Sunday"
-    ]:
-        groups = [
-            day,
-            "Weekend",
-            "Daily"
-        ]
-
+    if day in ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]:
+        groups = [day, "Weekday", "Daily"]
     else:
-        groups = [
-            day,
-            "Daily"
-        ]
+        groups = [day, "Weekend", "Daily"]
 
     return day_table.loc[
         day_table["Day"].isin(groups),
@@ -76,8 +52,8 @@ def is_current_time(start_time, end_time):
 
     if start <= end:
         return start <= now <= end
-    else:
-        return now >= start or now <= end
+
+    return now >= start or now <= end
 
 
 today = datetime.now(
@@ -85,16 +61,12 @@ today = datetime.now(
 ).strftime("%A")
 
 
-day_ids = get_day_groups(
-    today,
-    days
-)
+day_ids = get_day_groups(today, days)
 
 
 todays_specials = specials[
     specials["dayID"].isin(day_ids)
 ]
-
 
 todays_specials = todays_specials[
     todays_specials.apply(
@@ -125,38 +97,36 @@ results = (
 )
 
 
-st.subheader(
-    f"Happy Hours Available Now ({today})"
-)
+st.subheader(f"Happy Hours Available Now ({today})")
 
 
 if results.empty:
-    st.info("No happy hours found right now.")
+    st.info("No happy hours are active right now.")
+
 else:
-    st.dataframe(
-        results[
-            [
-                "Type",
-                "Name",
-                "Street",
-                "City",
-                "Day",
-                "Start",
-                "Stop",
-                "Description"
-            ]
-        ],
-        use_container_width=True,
-        hide_index=True
-    )
+    results = results.sort_values(["Name", "Start"])
 
+    for _, row in results.iterrows():
 
-with st.expander("Debug Information"):
-    st.write("Current day:")
-    st.write(today)
+        with st.expander(
+            f"**{row['Name']}** • {row['Start']} - {row['Stop']}"
+        ):
 
-    st.write("Applicable day IDs:")
-    st.write(day_ids)
+            st.markdown(f"**Special:** {row['Description']}")
 
-    st.write("Filtered specials:")
-    st.dataframe(todays_specials)
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.write(f"**Type:** {row['Type']}")
+                st.write(f"**Street:** {row['Street']}")
+                st.write(f"**City:** {row['City']}")
+
+            with col2:
+                st.write(f"**Day:** {row['Day']}")
+                st.write(f"**Starts:** {row['Start']}")
+                st.write(f"**Ends:** {row['Stop']}")
+
+            # Future additions
+            # st.link_button("Website", row["Website"])
+            # st.link_button("Directions", ...)
+            # st.write(row["Phone"])
