@@ -10,7 +10,7 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("🍺 Happy Hour Finder")
+st.title("🍺 LaCrosse Area Happy Hours")
 
 
 @st.cache_data
