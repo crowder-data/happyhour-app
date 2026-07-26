@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 st.set_page_config(
     page_title="Happy Hour Finder",
@@ -30,7 +31,9 @@ def get_day_groups(day, day_table):
 
 
 def is_current_time(start_time, end_time):
-    now = datetime.now().time()
+    now = datetime.now(
+        ZoneInfo("America/Chicago")
+    ).time()
 
     start = datetime.strptime(
         start_time,
@@ -48,7 +51,9 @@ def is_current_time(start_time, end_time):
         return now >= start or now <= end
 
 
-today = datetime.today().strftime("%A")
+today = datetime.now(
+    ZoneInfo("America/Chicago")
+).strftime("%A")
 
 
 day_ids = get_day_groups(
@@ -91,7 +96,10 @@ results = (
 )
 
 
-st.subheader(f"Happy Hours Available Now ({today})")
+st.subheader(
+    f"Happy Hours Available Now ({today})"
+)
+
 
 if results.empty:
     st.info("No happy hours found right now.")
@@ -115,6 +123,9 @@ else:
 
 
 with st.expander("Debug Information"):
+    st.write("Current day:")
+    st.write(today)
+
     st.write("Applicable day IDs:")
     st.write(day_ids)
 
