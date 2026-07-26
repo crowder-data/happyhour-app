@@ -23,13 +23,10 @@ business, specials, days = load_data()
 
 
 def get_day_groups(day, day_table):
-    return (
-        day_table.loc[
-            day_table["day"] == day,
-            "applies_to"
-        ]
-        .tolist()
-    )
+    return day_table.loc[
+        day_table["Day"] == day,
+        "ID"
+    ].tolist()
 
 
 def is_current_time(start_time, end_time):
@@ -53,32 +50,44 @@ def is_current_time(start_time, end_time):
 
 today = datetime.today().strftime("%A")
 
-day_groups = get_day_groups(
+
+day_ids = get_day_groups(
     today,
     days
 )
 
 
 todays_specials = specials[
-    specials["day"].isin(day_groups)
+    specials["dayID"].isin(day_ids)
 ]
 
 
 todays_specials = todays_specials[
     todays_specials.apply(
         lambda row: is_current_time(
-            row["start_time"],
-            row["end_time"]
+            row["Start"],
+            row["Stop"]
         ),
         axis=1
     )
 ]
 
 
-results = todays_specials.merge(
-    business,
-    on="business_id",
-    how="left"
+results = (
+    todays_specials
+    .merge(
+        business,
+        left_on="busID",
+        right_on="ID",
+        how="left"
+    )
+    .merge(
+        days,
+        left_on="dayID",
+        right_on="ID",
+        how="left",
+        suffixes=("", "_day")
+    )
 )
 
 
@@ -87,27 +96,27 @@ st.subheader(f"Happy Hours Available Now ({today})")
 if results.empty:
     st.info("No happy hours found right now.")
 else:
-    display_columns = [
-        "name",
-        "address",
-        "city",
-        "state",
-        "day",
-        "start_time",
-        "end_time",
-        "description"
-    ]
-
     st.dataframe(
-        results[display_columns],
+        results[
+            [
+                "Type",
+                "Name",
+                "Street",
+                "City",
+                "Day",
+                "Start",
+                "Stop",
+                "Description"
+            ]
+        ],
         use_container_width=True,
         hide_index=True
     )
 
 
 with st.expander("Debug Information"):
-    st.write("Day groups:")
-    st.write(day_groups)
+    st.write("Applicable day IDs:")
+    st.write(day_ids)
 
-    st.write("Matching specials:")
+    st.write("Filtered specials:")
     st.dataframe(todays_specials)
