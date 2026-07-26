@@ -37,19 +37,18 @@ def is_current_time(start_time, end_time):
 
     start = datetime.strptime(
         start_time,
-        "%I:%M %p"
+        "%I:%M:%S %p"
     ).time()
 
     end = datetime.strptime(
         end_time,
-        "%I:%M %p"
+        "%I:%M:%S %p"
     ).time()
 
     if start <= end:
         return start <= now <= end
     else:
         return now >= start or now <= end
-
 
 today = datetime.now(
     ZoneInfo("America/Chicago")
