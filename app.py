@@ -24,8 +24,37 @@ business, specials, days = load_data()
 
 
 def get_day_groups(day, day_table):
+    if day in [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday"
+    ]:
+        groups = [
+            day,
+            "Weekday",
+            "Daily"
+        ]
+
+    elif day in [
+        "Saturday",
+        "Sunday"
+    ]:
+        groups = [
+            day,
+            "Weekend",
+            "Daily"
+        ]
+
+    else:
+        groups = [
+            day,
+            "Daily"
+        ]
+
     return day_table.loc[
-        day_table["Day"] == day,
+        day_table["Day"].isin(groups),
         "ID"
     ].tolist()
 
@@ -49,6 +78,7 @@ def is_current_time(start_time, end_time):
         return start <= now <= end
     else:
         return now >= start or now <= end
+
 
 today = datetime.now(
     ZoneInfo("America/Chicago")
