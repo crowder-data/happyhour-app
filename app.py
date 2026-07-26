@@ -115,7 +115,7 @@ results = (
     )
 )
 
-st.subheader(f"Happy Hours Available Now ({today})")
+st.subheader("Current Happy Hours")
 
 if results.empty:
 
