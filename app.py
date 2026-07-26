@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 st.set_page_config(
@@ -24,7 +24,13 @@ business, specials, days = load_data()
 
 
 def get_day_groups(day, day_table):
-    if day in ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]:
+    if day in [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday"
+    ]:
         groups = [day, "Weekday", "Daily"]
     else:
         groups = [day, "Weekend", "Daily"]
@@ -38,22 +44,53 @@ def get_day_groups(day, day_table):
 def is_current_time(start_time, end_time):
     now = datetime.now(
         ZoneInfo("America/Chicago")
-    ).time()
+    )
 
     start = datetime.strptime(
         start_time,
         "%I:%M:%S %p"
-    ).time()
+    ).replace(
+        year=now.year,
+        month=now.month,
+        day=now.day
+    )
 
     end = datetime.strptime(
         end_time,
         "%I:%M:%S %p"
-    ).time()
+    ).replace(
+        year=now.year,
+        month=now.month,
+        day=now.day
+    )
 
-    if start <= end:
-        return start <= now <= end
+    if end < start:
+        end += timedelta(days=1)
 
-    return now >= start or now <= end
+    if now < start:
+        return False
+
+    return start <= now <= end
+
+
+def time_remaining(stop_time):
+    now = datetime.now(
+        ZoneInfo("America/Chicago")
+    )
+
+    stop = datetime.strptime(
+        stop_time,
+        "%I:%M:%S %p"
+    ).replace(
+        year=now.year,
+        month=now.month,
+        day=now.day
+    )
+
+    if stop < now:
+        stop += timedelta(days=1)
+
+    return stop - now
 
 
 today = datetime.now(
@@ -67,6 +104,7 @@ day_ids = get_day_groups(today, days)
 todays_specials = specials[
     specials["dayID"].isin(day_ids)
 ]
+
 
 todays_specials = todays_specials[
     todays_specials.apply(
@@ -97,36 +135,67 @@ results = (
 )
 
 
-st.subheader(f"Happy Hours Available Now ({today})")
-
-
 if results.empty:
     st.info("No happy hours are active right now.")
 
 else:
-    results = results.sort_values(["Name", "Start"])
+
+    results["TimeRemaining"] = results["Stop"].apply(
+        time_remaining
+    )
+
+    results = results.sort_values(
+        "TimeRemaining"
+    )
+
+    st.subheader(
+        f"Happy Hours Available Now ({today})"
+    )
 
     for _, row in results.iterrows():
 
+        total_minutes = int(
+            row["TimeRemaining"].total_seconds() // 60
+        )
+
+        hours = total_minutes // 60
+        minutes = total_minutes % 60
+
+        if hours:
+            remaining = f"{hours}h {minutes}m"
+        else:
+            remaining = f"{minutes}m"
+
         with st.expander(
-            f"**{row['Name']}** • {row['Start']} - {row['Stop']}"
+            f"**{row['Name']}** ({remaining} remaining)"
         ):
 
-            st.markdown(f"**Special:** {row['Description']}")
+            st.markdown(
+                f"### {row['Description']}"
+            )
 
             col1, col2 = st.columns(2)
 
             with col1:
-                st.write(f"**Type:** {row['Type']}")
-                st.write(f"**Street:** {row['Street']}")
-                st.write(f"**City:** {row['City']}")
+                st.write(
+                    f"**Type:** {row['Type']}"
+                )
+                st.write(
+                    f"**Address:** {row['Street']}"
+                )
+                st.write(
+                    f"**City:** {row['City']}"
+                )
 
             with col2:
-                st.write(f"**Day:** {row['Day']}")
-                st.write(f"**Starts:** {row['Start']}")
-                st.write(f"**Ends:** {row['Stop']}")
+                st.write(
+                    f"**Day:** {row['Day']}"
+                )
+                st.write(
+                    f"**Hours:** {row['Start']} – {row['Stop']}"
+                )
 
-            # Future additions
+            # Future additions:
             # st.link_button("Website", row["Website"])
-            # st.link_button("Directions", ...)
-            # st.write(row["Phone"])
+            # st.link_button("Directions", google_maps_url)
+            # st.write(f"Phone: {row['Phone']}")
